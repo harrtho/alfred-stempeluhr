@@ -31,9 +31,6 @@ from datetime import datetime, timedelta
 from workflow import Workflow3
 from workflow.background import is_running, run_in_background
 
-# How often to check for new/updated repos
-DEFAULT_UPDATE_INTERVAL = 180  # minutes
-
 # GitHub repo for self-updating
 UPDATE_SETTINGS = {'github_slug': 'xDevThomas/alfred-stempel-uhr'}
 
@@ -129,17 +126,12 @@ def parse_stempel(opts):
             # In case of first stamped day, calculate as day change
             if last_stamp is None:
                 last_stamp = current_stamp
-                # log.debug("Parser: First entry '%s'" %(current_stamp["Start"].date()))
                 current_stamp["Time"] -= current_stamp["Requred_Hours"]
-                # log.debug("Parser: Change time from '%s' to %s" %(current_stamp["Time"]+current_stamp["Requred_Hours"], current_stamp["Time"]))
 
 
             date_diff = current_stamp["Start"].date() - last_stamp["Start"].date()
-            # In case of a day change, required hours reduced from the time
             if date_diff.days > 0:
-                # log.debug("Parser: Change from %s to %s" %(last_stamp["Start"].date(), current_stamp["Start"].date()))
                 current_stamp["Time"] -= current_stamp["Requred_Hours"]
-                # log.debug("Parser: Change time from '%s' to %s" %(current_stamp["Time"]+current_stamp["Requred_Hours"], current_stamp["Time"]))
 
             add_stamp(overview, current_stamp)
 
@@ -178,14 +170,9 @@ def calc_overtime(overview, opts):
         current_year["Total_Overtime"] = 0.0
         current_year["Total_Lost"] = 0.0
 
-        # log.debug("Current Year %s" % year)
-
         for month in MONTHS:
-            # log.debug("Current Month '%s' in year '%s'" % (month, year))
             if month not in current_year:
-                # log.debug("Month %s not in current year %s" %(month, year))
                 if (year <= datetime.now().year) and (MONTHS.index(month) + 1 <= datetime.now().month):
-                    # log.debug("Create month %s in current year %s" %(month, year))
                     current_year[month] = {'Overtime' : 0.0, 'Lost' : 0.0}
 
                 continue
@@ -193,32 +180,18 @@ def calc_overtime(overview, opts):
             current_month = current_year[month]
             if overview["Total_Overtime"] >= 0.0:
                 if current_month["Overtime"] >= opts.monthly_compensated:
-                    # log.debug("Current month '%s' overtime '%s' bigger than '%s'" %(month, current_month["Overtime"], opts.monthly_compensated))
                     current_month["Overtime"] -= opts.monthly_compensated
-                    # log.debug("Month '%s' new overtime '%s'" %(month, current_month["Overtime"]))
                     current_month["Lost"] = opts.monthly_compensated
-                    # log.debug("Month '%s' lost overtime '%s'" %(month, current_month["Lost"]))
                     overview["Total_Overtime"] += current_month["Overtime"]
-                    # log.debug("New total overtime '%s'" %(overview["Total_Overtime"]))
                     current_year["Total_Overtime"] += current_month["Overtime"]
-                    # log.debug("New year '%s' overtime '%s'" %(year, current_year["Total_Overtime"]))
                     overview["Total_Lost"] += opts.monthly_compensated
-                    # log.debug("New total lost '%s'" %(overview["Total_Lost"]))
                     current_year["Total_Lost"] += opts.monthly_compensated
-                    # log.debug("New year '%s' lost '%s'" %(year, current_year["Total_Lost"]))
 
                 elif current_month["Overtime"] > 0.0:
-                    # log.debug("Current month '%s' overtime '%s' bigger than '%s'" %(month, current_month["Overtime"], 0.0))
                     overview["Total_Lost"] += current_month["Overtime"]
-                    # log.debug("Total overtime '%s'" %(overview["Total_Overtime"]))
-                    # log.debug("Total lost overtime '%s'" %(overview["Total_Lost"]))
                     current_year["Total_Lost"] += current_month["Overtime"]
-                    # log.debug("Year '%s' overtime '%s'" %(year, current_year["Total_Overtime"]))
-                    # log.debug("Year '%s' lost overtime '%s'" %(year, current_year["Total_Lost"]))
                     current_month["Lost"] = current_month["Overtime"]
-                    # log.debug("Month '%s' lost overtime '%s'" %(month, current_month["Lost"]))
                     current_month["Overtime"] = 0.0
-                    # log.debug("Month '%s' overtime '%s'" %(month, current_month["Overtime"]))
 
                 else:
                     overview["Total_Overtime"] += current_month["Overtime"]
@@ -311,13 +284,9 @@ def parse_args():
     """
     from docopt import docopt
 
-    log.debug('args=%r', wf.args)
     args = docopt(__doc__, wf.args)
-
     log.debug('args=%r', args)
 
-    update_interval = int(os.getenv('UPDATE_EVERY_MINS',
-                                    DEFAULT_UPDATE_INTERVAL)) * 60
     # The file path to the StempelUhrDataBackup.csv
     stempel_uhr = os.path.expanduser(os.getenv('FILE_PATH'))
 
@@ -326,7 +295,6 @@ def parse_args():
 
     opts = AttrDict(
         query=(args.get('<query>') or u'').strip(),
-        update_interval=update_interval,
         stempel_uhr=stempel_uhr,
         monthly_compensated=monthly_compensated,
         do_year=args.get('year'),
